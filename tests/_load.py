@@ -14,6 +14,6 @@ if _PACKAGE not in sys.modules:
     package.__path__ = [str(_DIR)]
     sys.modules[_PACKAGE] = package
 
-from awtrix_pure import const, messages, translate
+from awtrix_pure import const, discovery, messages, results, translate
 
-__all__ = ["const", "messages", "translate"]
+__all__ = ["const", "discovery", "messages", "results", "translate"]

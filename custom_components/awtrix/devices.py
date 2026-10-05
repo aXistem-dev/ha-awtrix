@@ -13,6 +13,8 @@ from .const import FLAVOR_NG, FLAVOR_V3
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
+MANUFACTURER = "Blueforcer"
+
 # Entity of the device whose state holds the MQTT topic prefix.
 PREFIX_ENTITY_V3 = "Device topic"
 PREFIX_ENTITY_NG = "MQTT prefix"
@@ -37,3 +39,18 @@ def find_prefix(hass: HomeAssistant, device_id: str) -> tuple[str, str] | None:
         if state is not None and state.state not in ("", STATE_UNKNOWN, STATE_UNAVAILABLE):
             return (FLAVOR_NG if is_ng else FLAVOR_V3), state.state
     return None
+
+
+def ng_devices(hass: HomeAssistant) -> list[tuple[str, str, str | None]]:
+    """Return ``(device id, uid, name)`` of every AWTRIX NG device; ``uid`` is the MQTT discovery identifier."""
+    found = []
+    registry = dr.async_get(hass)
+    for item in registry.devices:
+        # Current Home Assistant yields the entries; older versions yield the ids.
+        device = registry.async_get(item) if isinstance(item, str) else item
+        if device is None or device.manufacturer != MANUFACTURER or not is_ng_model(device.model):
+            continue
+        uid = next((ident[1] for ident in device.identifiers if ident[0] == "mqtt"), None)
+        if uid:
+            found.append((device.id, uid, device.name))
+    return found

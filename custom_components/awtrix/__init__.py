@@ -9,9 +9,11 @@ from homeassistant.components import mqtt
 from homeassistant.const import Platform
 from homeassistant.exceptions import ServiceValidationError
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.start import async_at_started
 
 from .const import DOMAIN
 from .devices import find_prefix
+from .manager import NgManager
 from .messages import HANDLERS, UnsupportedError, build
 
 if TYPE_CHECKING:
@@ -50,13 +52,22 @@ async def async_setup(hass: HomeAssistant, _: dict):
     return True
 
 
-async def async_setup_entry(_: HomeAssistant, __: ConfigEntry) -> bool:
-    """Initialise entry configuration."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Start publishing the extra AWTRIX NG entities and watching command results."""
+    manager = NgManager(hass)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = manager
+
+    async def start(_: HomeAssistant) -> None:
+        await manager.async_start()
+
+    entry.async_on_unload(async_at_started(hass, start))
+    entry.async_on_unload(manager.async_stop)
     return True
 
 
-async def async_unload_entry(_: HomeAssistant, __: ConfigEntry) -> bool:
-    """Remove entry after unload component."""
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Stop the manager; discovery documents stay retained on the broker so the entities keep working."""
+    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     return True
 
 
