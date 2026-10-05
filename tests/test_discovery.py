@@ -37,6 +37,11 @@ class StructureTests(unittest.TestCase):
             self.assertTrue(cfg["unique_id"].startswith(f"{UID}_ext_"))
             json.loads(discovery.encode(cfg))
 
+    def test_device_name_is_included_when_known(self):
+        named = discovery.build_entities(P, UID, device_name="Clock")
+        self.assertTrue(all(c["device"] == {"identifiers": [UID], "name": "Clock"} for _, c in named))
+        self.assertTrue(all("name" not in c["device"] for _, c in self.entities))
+
     def test_discovery_prefix_is_configurable(self):
         topic, _ = discovery.build_entities(P, UID, discovery_prefix="ha")[0]
         self.assertTrue(topic.startswith("ha/"))

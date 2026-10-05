@@ -54,32 +54,32 @@ class NgManager:
     async def async_sync(self, *_) -> None:
         self._cancel_retry = None
         pending = False
-        for device_id, uid in ng_devices(self._hass):
+        for device_id, uid, name in ng_devices(self._hass):
             if uid in self._unsubs:
                 continue
             found = find_prefix(self._hass, device_id)
             if found is None or found[0] != FLAVOR_NG:
                 pending = True
                 continue
-            await self._async_setup_device(uid, found[1])
+            await self._async_setup_device(uid, found[1], name)
 
         if pending and self._retries < MAX_RETRIES:
             self._retries += 1
             self._cancel_retry = async_call_later(self._hass, RETRY_SECONDS, self.async_sync)
 
-    async def _async_setup_device(self, uid: str, prefix: str) -> None:
+    async def _async_setup_device(self, uid: str, prefix: str, name: str | None) -> None:
         unsubs: list[CALLBACK_TYPE] = []
         self._unsubs[uid] = unsubs
         self._overlays[uid] = None
 
-        await self._async_publish_discovery(uid, prefix)
+        await self._async_publish_discovery(uid, prefix, name)
 
         @callback
         def on_capabilities(message) -> None:
             overlays = overlays_from_capabilities(message.payload)
             if overlays and overlays != self._overlays[uid]:
                 self._overlays[uid] = overlays
-                self._hass.async_create_task(self._async_publish_discovery(uid, prefix))
+                self._hass.async_create_task(self._async_publish_discovery(uid, prefix, name))
 
         @callback
         def on_result(message) -> None:
@@ -93,8 +93,8 @@ class NgManager:
         for topic in result_topics(prefix):
             unsubs.append(await mqtt.async_subscribe(self._hass, topic, on_result))
 
-    async def _async_publish_discovery(self, uid: str, prefix: str) -> None:
-        for topic, config in build_entities(prefix, uid, self._overlays.get(uid), self._discovery_prefix()):
+    async def _async_publish_discovery(self, uid: str, prefix: str, name: str | None) -> None:
+        for topic, config in build_entities(prefix, uid, self._overlays.get(uid), self._discovery_prefix(), name):
             await mqtt.async_publish(self._hass, topic, encode(config), retain=True)
 
     def _discovery_prefix(self) -> str:

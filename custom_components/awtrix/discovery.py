@@ -45,13 +45,20 @@ def build_entities(
     uid: str,
     overlays: list[str] | None = None,
     discovery_prefix: str = DEFAULT_DISCOVERY_PREFIX,
+    device_name: str | None = None,
 ) -> list[tuple[str, dict[str, Any]]]:
     """Return ``(discovery topic, config)`` pairs for every extra entity of one AWTRIX NG device."""
     overlay_options = [OVERLAY_NONE] + [o for o in (overlays or DEFAULT_OVERLAYS) if o]
 
+    # Home Assistant wants the device name in every document that shares a device; it is the name the
+    # firmware's own document already gave the device.
+    device: dict[str, Any] = {"identifiers": [uid]}
+    if device_name:
+        device["name"] = device_name
+
     common: dict[str, Any] = {
         "availability_topic": f"{prefix}/availability",
-        "device": {"identifiers": [uid]},
+        "device": device,
         "origin": {"name": "ha-awtrix"},
     }
     settings_state = {"state_topic": f"{prefix}/{SETTINGS_TOPIC}"}
