@@ -44,8 +44,11 @@ def find_prefix(hass: HomeAssistant, device_id: str) -> tuple[str, str] | None:
 def ng_devices(hass: HomeAssistant) -> list[tuple[str, str, str | None]]:
     """Return ``(device id, uid, name)`` of every AWTRIX NG device; ``uid`` is the MQTT discovery identifier."""
     found = []
-    for device in dr.async_get(hass).devices.values():
-        if device.manufacturer != MANUFACTURER or not is_ng_model(device.model):
+    registry = dr.async_get(hass)
+    for item in registry.devices:
+        # Current Home Assistant yields the entries; older versions yield the ids.
+        device = registry.async_get(item) if isinstance(item, str) else item
+        if device is None or device.manufacturer != MANUFACTURER or not is_ng_model(device.model):
             continue
         uid = next((ident[1] for ident in device.identifiers if ident[0] == "mqtt"), None)
         if uid:
