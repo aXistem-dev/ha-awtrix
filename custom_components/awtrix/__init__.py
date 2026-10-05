@@ -7,12 +7,13 @@ from typing import TYPE_CHECKING
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components import mqtt
-from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, Platform
+from homeassistant.const import Platform
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.entity_registry import async_entries_for_device, async_get
+from homeassistant.helpers.start import async_at_started
 
-from .const import DOMAIN, FLAVOR_NG, FLAVOR_V3
+from .const import DOMAIN
+from .devices import find_prefix
+from .manager import NgManager
 from .messages import HANDLERS, UnsupportedError, build
 
 if TYPE_CHECKING:
@@ -22,10 +23,6 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR]
-
-# Entity of the device whose state holds the MQTT topic prefix.
-PREFIX_ENTITY_V3 = "Device topic"
-PREFIX_ENTITY_NG = "MQTT prefix"
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -55,13 +52,22 @@ async def async_setup(hass: HomeAssistant, _: dict):
     return True
 
 
-async def async_setup_entry(_: HomeAssistant, __: ConfigEntry) -> bool:
-    """Initialise entry configuration."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Start publishing the extra AWTRIX NG entities and watching command results."""
+    manager = NgManager(hass)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = manager
+
+    async def start(_: HomeAssistant) -> None:
+        await manager.async_start()
+
+    entry.async_on_unload(async_at_started(hass, start))
+    entry.async_on_unload(manager.async_stop)
     return True
 
 
-async def async_unload_entry(_: HomeAssistant, __: ConfigEntry) -> bool:
-    """Remove entry after unload component."""
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Stop the manager; discovery documents stay retained on the broker so the entities keep working."""
+    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     return True
 
 
@@ -70,19 +76,10 @@ def _resolve_device(hass: HomeAssistant, device_id: str | None) -> tuple[str, st
     if not device_id:
         raise ServiceValidationError("An Awtrix device is required")
 
-    device = dr.async_get(hass).async_get(device_id)
-    is_ng = device is not None and "ng" in (device.model or "").lower().split()
-
-    for entity in async_entries_for_device(async_get(hass), device_id, True):
-        if entity.original_name == PREFIX_ENTITY_NG:
-            is_ng = True
-        elif entity.original_name != PREFIX_ENTITY_V3:
-            continue
-        state = hass.states.get(entity.entity_id)
-        if state is not None and state.state not in ("", STATE_UNKNOWN, STATE_UNAVAILABLE):
-            return (FLAVOR_NG if is_ng else FLAVOR_V3), state.state
-
-    raise ServiceValidationError("Could not find the MQTT topic of this Awtrix device; is the device connected to MQTT?")
+    found = find_prefix(hass, device_id)
+    if found is None:
+        raise ServiceValidationError("Could not find the MQTT topic of this Awtrix device; is the device connected to MQTT?")
+    return found
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

@@ -79,6 +79,44 @@ On an NG device the existing actions translate the Awtrix 3 vocabulary, for exam
 
 Anything that is not an Awtrix 3 key is passed through untouched, so NG-only options (`overlay`, `effect`, `effectSpeed`, `palette`, `paletteBlend`, `font`, `scroll`, `transitionEffect`, `timeMode`, ...) work directly in the same actions. Awtrix 3 options with no NG equivalent (for example `TMODE`, `topText`, the per-app toggles `TIM`/`DAT`/`HUM`/`TEMP`/`BAT`) are ignored on NG; use `awtrix.app_order` for the app toggles.
 
+## Extra entities for AWTRIX NG
+
+For every AWTRIX NG device the integration publishes a set of extra entities as MQTT discovery documents. They appear on the same device as the firmware's own entities, take their state from the retained `<prefix>/state/settings` and `<prefix>/state/device` topics, and send commands to `<prefix>/cmd/...`. Nothing is polled, and the documents stay retained on the broker, so the entities keep working if the integration is removed.
+
+| Entity | Type | Notes |
+|---|---|---|
+| Weather overlay | select | `none` plus the overlays the firmware reports on `state/capabilities`. The firmware reports no overlay state, so the entity shows what was last sent. |
+| Moodlight | light | Colour and brightness; off sends an empty payload. State is what was last sent. |
+| Saturation, App duration | number | Config |
+| Buzzer / DFPlayer / MP3 volume | number | Config, disabled by default (enable the ones your board has) |
+| 24-hour clock, Show seconds, Celsius, Uppercase text, Block buttons | switch | Config |
+| Clock separator, Transition direction | select | Config |
+| Lowest free heap, Largest free heap block, Last reset reason, MQTT connects, MQTT last error | sensor | Diagnostic |
+| Frame rate, Commands received, Free PSRAM | sensor | Diagnostic, disabled by default |
+
+The integration finds each device through the device registry (manufacturer `Blueforcer`, model `AWTRIX NG`) and its `MQTT prefix` entity. It publishes at startup, again shortly after a new NG device appears, and again when the firmware's capabilities change. The discovery prefix is read from the MQTT integration (default `homeassistant`).
+
+Notes on use:
+
+- Settings are persistent on the device. The config entities write the clock's saved preferences, so use them for occasional changes and do not drive them from an automation that fires repeatedly. The overlay, moodlight and indicator commands are not settings.
+- The *Lowest free heap* sensor only ever falls until the clock reboots; it is the useful one to alert on, together with *Last reset reason*.
+- To remove the entities, delete the retained discovery topics `<discovery prefix>/+/<device uid>/ext_+/config` from the broker.
+
+## Command errors
+
+AWTRIX NG answers every command it recognises on `<command topic>/result`. When a reply says the command was refused, the integration logs a warning and fires the event `awtrix_command_failed` with `prefix`, `command`, `code`, `message` and `field`, so an automation can notify on it:
+
+```yaml
+trigger:
+  - platform: event
+    event_type: awtrix_command_failed
+action:
+  - action: persistent_notification.create
+    data:
+      title: AWTRIX command refused
+      message: "{{ trigger.event.data.command }}: {{ trigger.event.data.code }} {{ trigger.event.data.message }}"
+```
+
 ## Development
 
 The topic and payload logic lives in `messages.py` and `translate.py` and has no Home Assistant dependency:
@@ -86,3 +124,5 @@ The topic and payload logic lives in `messages.py` and `translate.py` and has no
 ```
 python -m unittest discover -s tests -t .
 ```
+
+`discovery.py` and `results.py` are pure as well; the tests render every discovery template with Jinja and check the JSON the firmware receives. `manager.py` and `devices.py` are the Home Assistant glue.
