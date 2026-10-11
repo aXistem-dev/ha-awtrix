@@ -104,7 +104,7 @@ Notes on use:
 
 ## Command errors
 
-AWTRIX NG answers every command it recognises on `<command topic>/result`. When a reply says the command was refused, the integration logs a warning and fires the event `awtrix_command_failed` with `prefix`, `command`, `code`, `message` and `field`, so an automation can notify on it:
+AWTRIX NG answers every command it recognises on `<command topic>/result`. When a reply says the command was refused, the integration logs a warning and fires the event `awtrix_command_failed` with `prefix`, `command`, `code`, `message` and `field`, so an automation can notify on it (dismissing a notification that is not there is not reported):
 
 ```yaml
 trigger:

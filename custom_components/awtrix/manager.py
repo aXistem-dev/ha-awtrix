@@ -13,7 +13,7 @@ from homeassistant.helpers.event import async_call_later
 from .const import FLAVOR_NG
 from .devices import find_prefix, ng_devices
 from .discovery import CAPABILITIES_TOPIC, DEFAULT_DISCOVERY_PREFIX, build_entities, encode, overlays_from_capabilities
-from .results import EVENT_COMMAND_FAILED, describe, parse_failure, result_topics
+from .results import EVENT_COMMAND_FAILED, describe, is_benign, parse_failure, result_topics
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -85,6 +85,9 @@ class NgManager:
         def on_result(message) -> None:
             failure = parse_failure(prefix, message.topic, message.payload)
             if failure is None:
+                return
+            if is_benign(failure):
+                _LOGGER.debug("AWTRIX NG %s: %s", prefix, describe(failure))
                 return
             _LOGGER.warning("AWTRIX NG %s: %s", prefix, describe(failure))
             self._hass.bus.async_fire(EVENT_COMMAND_FAILED, {"prefix": prefix, **failure})
