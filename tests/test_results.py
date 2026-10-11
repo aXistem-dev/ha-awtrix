@@ -32,6 +32,14 @@ class ParseFailureTests(unittest.TestCase):
         out = results.parse_failure(P, f"{P}/cmd/display/result", '{"ok":false}')
         self.assertEqual(out["code"], "unknown")
 
+    def test_dismissing_a_missing_notification_is_benign(self):
+        gone = results.parse_failure(P, f"{P}/cmd/notify/dismiss/now-playing/result", '{"ok":false,"error":{"code":"notFound","message":"not found"}}')
+        self.assertTrue(results.is_benign(gone))
+        other = results.parse_failure(P, f"{P}/cmd/apps/switch/result", '{"ok":false,"error":{"code":"notFound","message":"not found"}}')
+        self.assertFalse(results.is_benign(other))
+        refused = results.parse_failure(P, f"{P}/cmd/notify/dismiss/result", '{"ok":false,"error":{"code":"validationFailed"}}')
+        self.assertFalse(results.is_benign(refused))
+
     def test_subscription_filters(self):
         self.assertEqual(results.result_topics(P), [f"{P}/cmd/+/result", f"{P}/cmd/+/+/result", f"{P}/cmd/+/+/+/result"])
 

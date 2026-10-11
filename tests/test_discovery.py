@@ -97,6 +97,15 @@ class TemplateTests(unittest.TestCase):
             self.assertEqual(render(cfg["value_template"], value_json={key: True}), "ON")
             self.assertEqual(render(cfg["value_template"], value_json={key: False}), "OFF")
 
+    def test_notify_accepts_the_message_under_either_name(self):
+        tpl = self.by_key["notification"]["command_template"]
+        self.assertEqual(json.loads(render(tpl, message='say "hi"')), {"text": 'say "hi"'})
+        self.assertEqual(json.loads(render(tpl, value="plain")), {"text": "plain"})
+
+    def test_screen_entities(self):
+        self.assertEqual(self.by_key["refreshScreen"]["command_topic"], f"{P}/cmd/screen/get")
+        self.assertEqual(self.by_key["screen"]["topic"], f"{P}/ext/screen")
+
     def test_selects_on_settings(self):
         for key, value in (("timeSeparatorMode", "pulse"), ("transitionDirection", "reverse")):
             cfg = self.by_key[key]

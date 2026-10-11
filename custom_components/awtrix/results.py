@@ -42,6 +42,11 @@ def parse_failure(prefix: str, topic: str, payload: str | bytes) -> dict[str, An
     }
 
 
+def is_benign(failure: dict[str, Any]) -> bool:
+    """Refusals that carry no news: dismissing a notification that is not (or no longer) there."""
+    return failure.get("code") == "notFound" and str(failure.get("command", "")).startswith("notify/dismiss")
+
+
 def describe(failure: dict[str, Any]) -> str:
     """One human line for a log entry."""
     field = f" (field {failure['field']})" if failure.get("field") else ""

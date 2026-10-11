@@ -91,6 +91,8 @@ For every AWTRIX NG device the integration publishes a set of extra entities as 
 | Buzzer / DFPlayer / MP3 volume | number | Config, disabled by default (enable the ones your board has) |
 | 24-hour clock, Show seconds, Celsius, Uppercase text, Block buttons | switch | Config |
 | Clock separator, Transition direction | select | Config |
+| Notification | notify | `notify.send_message` shows the text on the clock (`cmd/notify`) |
+| Refresh screen picture, Screen | button, camera | The button asks the clock for its current screen (`cmd/screen/get`); the integration turns the reply into a PNG and publishes it on `<prefix>/ext/screen` for the camera. Nothing refreshes it on its own, so the clock is only asked when someone presses the button |
 | Lowest free heap, Largest free heap block, Last reset reason, MQTT connects, MQTT last error | sensor | Diagnostic |
 | Frame rate, Commands received, Free PSRAM | sensor | Diagnostic, disabled by default |
 
@@ -104,7 +106,7 @@ Notes on use:
 
 ## Command errors
 
-AWTRIX NG answers every command it recognises on `<command topic>/result`. When a reply says the command was refused, the integration logs a warning and fires the event `awtrix_command_failed` with `prefix`, `command`, `code`, `message` and `field`, so an automation can notify on it:
+AWTRIX NG answers every command it recognises on `<command topic>/result`. When a reply says the command was refused, the integration logs a warning and fires the event `awtrix_command_failed` with `prefix`, `command`, `code`, `message` and `field`, so an automation can notify on it. Dismissing a notification that is not there (`notFound` on `notify/dismiss`) is not reported:
 
 ```yaml
 trigger:
@@ -125,4 +127,4 @@ The topic and payload logic lives in `messages.py` and `translate.py` and has no
 python -m unittest discover -s tests -t .
 ```
 
-`discovery.py` and `results.py` are pure as well; the tests render every discovery template with Jinja and check the JSON the firmware receives. `manager.py` and `devices.py` are the Home Assistant glue.
+`discovery.py`, `results.py` and `screen.py` are pure as well; the tests render every discovery template with Jinja and check the JSON the firmware receives. `manager.py` and `devices.py` are the Home Assistant glue.

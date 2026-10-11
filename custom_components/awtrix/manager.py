@@ -12,8 +12,17 @@ from homeassistant.helpers.event import async_call_later
 
 from .const import FLAVOR_NG
 from .devices import find_prefix, ng_devices
-from .discovery import CAPABILITIES_TOPIC, DEFAULT_DISCOVERY_PREFIX, build_entities, encode, overlays_from_capabilities
-from .results import EVENT_COMMAND_FAILED, describe, parse_failure, result_topics
+from .discovery import (
+    CAPABILITIES_TOPIC,
+    DEFAULT_DISCOVERY_PREFIX,
+    SCREEN_PICTURE_TOPIC,
+    SCREEN_TOPIC,
+    build_entities,
+    encode,
+    overlays_from_capabilities,
+)
+from .results import EVENT_COMMAND_FAILED, describe, is_benign, parse_failure, result_topics
+from .screen import parse_screen, to_png
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -86,10 +95,22 @@ class NgManager:
             failure = parse_failure(prefix, message.topic, message.payload)
             if failure is None:
                 return
+            if is_benign(failure):
+                _LOGGER.debug("AWTRIX NG %s: %s", prefix, describe(failure))
+                return
             _LOGGER.warning("AWTRIX NG %s: %s", prefix, describe(failure))
             self._hass.bus.async_fire(EVENT_COMMAND_FAILED, {"prefix": prefix, **failure})
 
+        @callback
+        def on_screen(message) -> None:
+            screen = parse_screen(message.payload)
+            if screen is not None:
+                self._hass.async_create_task(
+                    mqtt.async_publish(self._hass, f"{prefix}/{SCREEN_PICTURE_TOPIC}", to_png(*screen), retain=True)
+                )
+
         unsubs.append(await mqtt.async_subscribe(self._hass, f"{prefix}/{CAPABILITIES_TOPIC}", on_capabilities))
+        unsubs.append(await mqtt.async_subscribe(self._hass, f"{prefix}/{SCREEN_TOPIC}", on_screen))
         for topic in result_topics(prefix):
             unsubs.append(await mqtt.async_subscribe(self._hass, topic, on_result))
 

@@ -30,6 +30,8 @@ _TRANSITION_DIRECTIONS = ["normal", "reverse"]
 SETTINGS_TOPIC = "state/settings"
 DEVICE_TOPIC = "state/device"
 CAPABILITIES_TOPIC = "state/capabilities"
+SCREEN_TOPIC = "state/screen"  # the firmware publishes it only when asked (cmd/screen/get)
+SCREEN_PICTURE_TOPIC = "ext/screen"  # the PNG made from it, for the MQTT camera
 
 
 def _onoff(key: str) -> str:
@@ -103,6 +105,27 @@ def build_entities(
             "command_off_template": "",
             "optimistic": True,
         },
+    )
+    add(
+        "notify",
+        "notification",
+        {
+            "name": "Notification",
+            "icon": "mdi:message-text",
+            "command_topic": f"{prefix}/cmd/notify",
+            # Home Assistant does not document the variable name; accept the message either way.
+            "command_template": '{"text": {{ (message if message is defined else value) | tojson }}}',
+        },
+    )
+    add(
+        "button",
+        "refreshScreen",
+        {"name": "Refresh screen picture", "icon": "mdi:image-refresh", "command_topic": f"{prefix}/cmd/screen/get"},
+    )
+    add(
+        "camera",
+        "screen",
+        {"name": "Screen", "icon": "mdi:television-ambient-light", "topic": f"{prefix}/{SCREEN_PICTURE_TOPIC}"},
     )
     for key, label, enabled in (
         ("buzzerVolume", "Buzzer volume", False),
