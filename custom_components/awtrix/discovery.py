@@ -24,6 +24,7 @@ DEFAULT_DISCOVERY_PREFIX = "homeassistant"
 DEFAULT_OVERLAYS = ["drizzle", "frost", "rain", "snow", "storm", "thunder"]
 OVERLAY_NONE = "none"
 
+NOTIFY_DURATION_MS = 5000
 _SEPARATOR_MODES = ["steady", "blink", "pulse"]
 _TRANSITION_DIRECTIONS = ["normal", "reverse"]
 
@@ -114,7 +115,12 @@ def build_entities(
             "icon": "mdi:message-text",
             "command_topic": f"{prefix}/cmd/notify",
             # Home Assistant does not document the variable name; accept the message either way.
-            "command_template": '{"text": {{ (message if message is defined else value) | tojson }}}',
+            # A message that fits the panel never finishes a scroll, so without a duration it would stay
+            # until dismissed: send a default duration.
+            "command_template": '{"text": {{ (message if message is defined else value) | tojson }}, "durationMs": '
+            + str(NOTIFY_DURATION_MS)
+            + "}",
+            "retain": False,
         },
     )
     add(

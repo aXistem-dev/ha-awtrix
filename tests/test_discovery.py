@@ -99,8 +99,9 @@ class TemplateTests(unittest.TestCase):
 
     def test_notify_accepts_the_message_under_either_name(self):
         tpl = self.by_key["notification"]["command_template"]
-        self.assertEqual(json.loads(render(tpl, message='say "hi"')), {"text": 'say "hi"'})
-        self.assertEqual(json.loads(render(tpl, value="plain")), {"text": "plain"})
+        self.assertEqual(json.loads(render(tpl, message='say "hi"')), {"text": 'say "hi"', "durationMs": 5000})
+        self.assertEqual(json.loads(render(tpl, value="plain")), {"text": "plain", "durationMs": 5000})
+        self.assertIs(self.by_key["notification"]["retain"], False)
 
     def test_screen_entities(self):
         self.assertEqual(self.by_key["refreshScreen"]["command_topic"], f"{P}/cmd/screen/get")

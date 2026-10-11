@@ -91,7 +91,7 @@ For every AWTRIX NG device the integration publishes a set of extra entities as 
 | Buzzer / DFPlayer / MP3 volume | number | Config, disabled by default (enable the ones your board has) |
 | 24-hour clock, Show seconds, Celsius, Uppercase text, Block buttons | switch | Config |
 | Clock separator, Transition direction | select | Config |
-| Notification | notify | `notify.send_message` shows the text on the clock (`cmd/notify`) |
+| Notification | notify | `notify.send_message` shows the text on the clock for 5 s (`cmd/notify`, `durationMs` 5000, not retained) |
 | Refresh screen picture, Screen | button, camera | The button asks the clock for its current screen (`cmd/screen/get`); the integration turns the reply into a PNG and publishes it on `<prefix>/ext/screen` for the camera. Nothing refreshes it on its own, so the clock is only asked when someone presses the button |
 | Lowest free heap, Largest free heap block, Last reset reason, MQTT connects, MQTT last error | sensor | Diagnostic |
 | Frame rate, Commands received, Free PSRAM | sensor | Diagnostic, disabled by default |
