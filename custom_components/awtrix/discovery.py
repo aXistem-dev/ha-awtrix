@@ -32,7 +32,15 @@ SETTINGS_TOPIC = "state/settings"
 DEVICE_TOPIC = "state/device"
 CAPABILITIES_TOPIC = "state/capabilities"
 SCREEN_TOPIC = "state/screen"  # the firmware publishes it only when asked (cmd/screen/get)
-SCREEN_PICTURE_TOPIC = "ext/screen"  # the PNG made from it, for the MQTT camera
+
+
+def screen_picture_topic(prefix: str) -> str:
+    """Topic of the PNG made from the screen snapshot, for the MQTT camera.
+
+    It sits beside the clock's topic prefix, not under it (``clock-ext/screen``, not ``clock/ext/screen``), so a
+    broader subscription on the clock could never deliver the retained picture to it.
+    """
+    return f"{prefix}-ext/screen"
 
 
 def _onoff(key: str) -> str:
@@ -131,7 +139,7 @@ def build_entities(
     add(
         "camera",
         "screen",
-        {"name": "Screen", "icon": "mdi:television-ambient-light", "topic": f"{prefix}/{SCREEN_PICTURE_TOPIC}"},
+        {"name": "Screen", "icon": "mdi:television-ambient-light", "topic": screen_picture_topic(prefix)},
     )
     for key, label, enabled in (
         ("buzzerVolume", "Buzzer volume", False),

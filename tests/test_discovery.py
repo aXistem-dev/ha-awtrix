@@ -65,6 +65,14 @@ class StructureTests(unittest.TestCase):
         self.assertEqual(options, ["none", "rain", "hail"])
 
 
+class ScreenTopicTests(unittest.TestCase):
+    def test_picture_topic_is_beside_the_prefix_not_under_it(self):
+        self.assertEqual(discovery.screen_picture_topic("awtrix"), "awtrix-ext/screen")
+        self.assertEqual(discovery.screen_picture_topic("home/clock"), "home/clock-ext/screen")
+        for prefix in ("awtrix", "home/clock"):
+            self.assertFalse(discovery.screen_picture_topic(prefix).startswith(prefix + "/"))
+
+
 class TemplateTests(unittest.TestCase):
     def setUp(self):
         self.by_key = {t.split("/")[-2][4:]: c for t, c in discovery.build_entities(P, UID)}
@@ -105,7 +113,8 @@ class TemplateTests(unittest.TestCase):
 
     def test_screen_entities(self):
         self.assertEqual(self.by_key["refreshScreen"]["command_topic"], f"{P}/cmd/screen/get")
-        self.assertEqual(self.by_key["screen"]["topic"], f"{P}/ext/screen")
+        self.assertEqual(self.by_key["screen"]["topic"], f"{P}-ext/screen")
+        self.assertFalse(self.by_key["screen"]["topic"].startswith(f"{P}/"))
 
     def test_selects_on_settings(self):
         for key, value in (("timeSeparatorMode", "pulse"), ("transitionDirection", "reverse")):

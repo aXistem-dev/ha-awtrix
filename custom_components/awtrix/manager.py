@@ -15,11 +15,11 @@ from .devices import find_prefix, ng_devices
 from .discovery import (
     CAPABILITIES_TOPIC,
     DEFAULT_DISCOVERY_PREFIX,
-    SCREEN_PICTURE_TOPIC,
     SCREEN_TOPIC,
     build_entities,
     encode,
     overlays_from_capabilities,
+    screen_picture_topic,
 )
 from .results import EVENT_COMMAND_FAILED, describe, is_benign, parse_failure, result_topics
 from .screen import parse_screen, to_png
@@ -106,7 +106,7 @@ class NgManager:
             screen = parse_screen(message.payload)
             if screen is not None:
                 self._hass.async_create_task(
-                    mqtt.async_publish(self._hass, f"{prefix}/{SCREEN_PICTURE_TOPIC}", to_png(*screen), retain=True)
+                    mqtt.async_publish(self._hass, screen_picture_topic(prefix), to_png(*screen), retain=True)
                 )
 
         unsubs.append(await mqtt.async_subscribe(self._hass, f"{prefix}/{CAPABILITIES_TOPIC}", on_capabilities))
