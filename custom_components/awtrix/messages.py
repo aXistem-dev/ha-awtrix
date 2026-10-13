@@ -224,7 +224,7 @@ def play_sound(flavor: str, prefix: str, data: dict[str, Any]) -> list[Message]:
     raise UnsupportedError(f"'{key}' is only supported by AWTRIX NG devices; use 'sound' or 'rtttl'")
 
 
-# Older field values of awtrix.stop_sound, as the group they stop.
+# awtrix.stop_sound `scope` values and the group each one stops.
 _STOP_SCOPES = {"sounds": "alert", "stream": "radio", "all": None}
 
 

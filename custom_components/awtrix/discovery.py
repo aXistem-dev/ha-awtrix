@@ -316,8 +316,8 @@ def build_entities(
     return out
 
 
-# Extra entities for the per-output volume settings of AWTRIX NG before 1.2. The firmware's own discovery covers
-# volume now, so their retained documents are cleared and Home Assistant removes them.
+# Extra entities the firmware's own discovery covers (its volume controls). Their retained documents are cleared at
+# startup, so Home Assistant removes them.
 RETIRED = [("number", "buzzerVolume"), ("number", "dfplayerVolume"), ("number", "mp3Volume")]
 
 
