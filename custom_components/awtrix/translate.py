@@ -10,6 +10,7 @@ Keys that are not part of the Awtrix 3 vocabulary are passed through untouched, 
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 NG_TRANSITIONS = [
@@ -54,10 +55,7 @@ _APP_RENAMES = {
     "lineC": "chartColor",
     "blinkText": "textBlinkMs",
     "fadeText": "textFadeMs",
-    "center": "textCenter",
     "textOffset": "textOffsetX",
-    "rtttl": "soundRtttl",
-    "loopSound": "soundLoop",
 }
 
 # Awtrix 3 keys with no NG equivalent.
@@ -136,6 +134,32 @@ def _translate_draw(draw: Any) -> Any:
     return out
 
 
+def _is_plain_base64(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) > 64
+        and not value.startswith("data:")
+        and re.fullmatch(r"[A-Za-z0-9+/]+={0,2}", value) is not None
+    )
+
+
+def _sound_object(data: dict[str, Any]) -> Any:
+    """Awtrix 3 ``sound`` / ``rtttl`` / ``loopSound`` as one NG sound object (``None`` without a sound)."""
+    sound = data.get("sound")
+    if isinstance(sound, (dict, list)):
+        return sound  # already an NG sound object or list
+    if data.get("rtttl"):
+        out: dict[str, Any] = {"rtttl": str(data["rtttl"])}
+    elif sound not in (None, ""):
+        name = str(sound)
+        out = {"track": int(name)} if name.isdigit() else {"file": name}  # a number is a DFPlayer track
+    else:
+        return None
+    if data.get("loopSound"):
+        out["loop"] = True
+    return out
+
+
 def translate_app_payload(data: dict[str, Any]) -> dict[str, Any]:
     """Convert an Awtrix 3 app or notification payload into an AWTRIX NG one."""
     out: dict[str, Any] = {}
@@ -145,6 +169,12 @@ def translate_app_payload(data: dict[str, Any]) -> dict[str, Any]:
             continue
         if key in _APP_RENAMES:
             out[_APP_RENAMES[key]] = value
+        elif key in ("sound", "rtttl", "loopSound"):
+            continue  # one sound object, built below
+        elif key == "center":
+            out["textAlign"] = "center" if value else "start"
+        elif key == "icon" and _is_plain_base64(value):
+            out["icon"] = "data:image/jpeg;base64," + value  # Awtrix 3 base64 icons are 8x8 JPGs
         elif key == "text" and isinstance(value, list):
             out["text"] = _translate_fragments(value)
         elif key == "draw":
@@ -168,6 +198,10 @@ def translate_app_payload(data: dict[str, Any]) -> dict[str, Any]:
             out.setdefault("scroll", {})["speed"] = int(value)
         else:
             out[key] = value
+
+    sound = _sound_object(data)
+    if sound is not None:
+        out["sound"] = sound
 
     # Awtrix 3 colour effects map onto NG palettes painted onto the text.
     if data.get("rainbow"):
@@ -220,9 +254,7 @@ def translate_settings(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
             settings["timeShowSeconds"] = "ss" in fmt
         elif key == "VOL":
             # Awtrix 3 volume is 0-30, NG volumes are percent.
-            percent = int(_clamp(float(value) * 100 / 30, 0, 100))
-            settings["buzzerVolume"] = percent
-            settings["dfplayerVolume"] = percent
+            settings["volume"] = int(_clamp(float(value) * 100 / 30, 0, 100))
         elif key == "MATP":
             display["power"] = bool(value)
         elif key == "OVERLAY":

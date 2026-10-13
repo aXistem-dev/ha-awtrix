@@ -60,7 +60,23 @@ class SettingsTests(unittest.TestCase):
 
     def test_volume_scaled(self):
         s, _, _ = t.translate_settings({"VOL": 15})
-        self.assertEqual(s, {"buzzerVolume": 50, "dfplayerVolume": 50})
+        self.assertEqual(s, {"volume": 50})
+
+    def test_sound_object(self):
+        out = t.translate_app_payload({"sound": "ding", "loopSound": True})
+        self.assertEqual(out, {"sound": {"file": "ding", "loop": True}})
+        self.assertEqual(t.translate_app_payload({"rtttl": "a:d=4:c"}), {"sound": {"rtttl": "a:d=4:c"}})
+        self.assertEqual(t.translate_app_payload({"sound": "7"}), {"sound": {"track": 7}})
+        native = [{"track": 3}, {"rtttl": "b:d=4:c"}]
+        self.assertEqual(t.translate_app_payload({"sound": native}), {"sound": native})
+        self.assertEqual(t.translate_app_payload({"text": "x"}), {"text": "x"})
+
+    def test_center_and_base64_icon(self):
+        self.assertEqual(t.translate_app_payload({"center": False}), {"textAlign": "start"})
+        self.assertEqual(t.translate_app_payload({"center": True}), {"textAlign": "center"})
+        b64 = "/9j/" + "A" * 120 + "=="
+        self.assertEqual(t.translate_app_payload({"icon": b64}), {"icon": "data:image/jpeg;base64," + b64})
+        self.assertEqual(t.translate_app_payload({"icon": "weather-rain"}), {"icon": "weather-rain"})
 
     def test_unsupported_reported(self):
         _, _, unsupported = t.translate_settings({"TMODE": 1, "TIM": True, "BRI": 3})

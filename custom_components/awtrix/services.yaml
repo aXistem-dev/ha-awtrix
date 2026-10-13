@@ -413,14 +413,25 @@ settings:
           description: "Show temperatures in Celsius. AWTRIX NG only."
           selector:
             boolean: {}
-        soundEnabled:
-          name: "Sound Enabled"
-          description: "Mute switch for one-shot sounds. AWTRIX NG only."
+        volume:
+          name: "Volume"
+          description: "Master volume in percent; 0 mutes every sound. AWTRIX NG only."
           selector:
-            boolean: {}
-        buzzerVolume:
-          name: "Buzzer Volume"
-          description: "Buzzer volume in percent. AWTRIX NG only."
+            number:
+              min: 0
+              max: 100
+              mode: slider
+        appVolume:
+          name: "App Volume"
+          description: "Volume of script sounds, in percent of the master volume. AWTRIX NG only."
+          selector:
+            number:
+              min: 0
+              max: 100
+              mode: slider
+        alertVolume:
+          name: "Alert Volume"
+          description: "Volume of notifications and played sounds, in percent of the master volume. AWTRIX NG only."
           selector:
             number:
               min: 0
@@ -1644,7 +1655,7 @@ play_sound:
               model: AWTRIX NG
     sound:
       name: Sound
-      description: "Name of a stored sound or melody (on AWTRIX NG also a plain DFPlayer track number)."
+      description: "Name of a stored sound (on AWTRIX NG an MP3 or melody)."
       example: "beep"
       selector:
         text: {}
@@ -1656,12 +1667,12 @@ play_sound:
         text: {}
     mp3:
       name: MP3
-      description: "Stored MP3 to play. AWTRIX NG only."
+      description: "Stored MP3 to play, the same as Sound. AWTRIX NG only."
       selector:
         text: {}
     melody:
       name: Melody
-      description: "Stored melody to play. AWTRIX NG only."
+      description: "Stored melody to play, the same as Sound. AWTRIX NG only."
       selector:
         text: {}
     track:
@@ -1690,10 +1701,15 @@ play_sound:
       description: "http(s) radio stream that is not stored. AWTRIX NG only."
       selector:
         text: {}
+    loop:
+      name: Loop
+      description: "Repeat the sound until it is stopped. AWTRIX NG only."
+      selector:
+        boolean: {}
 
 stop_sound:
   name: Stop Sound
-  description: "Stop playing sounds and/or the radio stream. AWTRIX NG only."
+  description: "Stop sounds and/or the radio stream. AWTRIX NG only."
   fields:
     device:
       name: Awtrix device
@@ -1708,15 +1724,15 @@ stop_sound:
             - integration: mqtt
               manufacturer: Blueforcer
               model: AWTRIX NG
-    scope:
-      name: Scope
-      description: "What to stop; everything when left empty."
+    group:
+      name: Group
+      description: "What to stop: notification and played sounds (alert), script sounds (app) or the radio; everything when left empty."
       selector:
         select:
           options:
-            - sounds
-            - stream
-            - all
+            - alert
+            - app
+            - radio
 
 reboot:
   name: Reboot

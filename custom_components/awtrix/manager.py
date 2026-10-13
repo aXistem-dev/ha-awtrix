@@ -19,6 +19,7 @@ from .discovery import (
     build_entities,
     encode,
     overlays_from_capabilities,
+    retired_topics,
     screen_picture_topic,
 )
 from .results import EVENT_COMMAND_FAILED, describe, is_benign, parse_failure, result_topics
@@ -117,6 +118,8 @@ class NgManager:
     async def _async_publish_discovery(self, uid: str, prefix: str, name: str | None) -> None:
         for topic, config in build_entities(prefix, uid, self._overlays.get(uid), self._discovery_prefix(), name):
             await mqtt.async_publish(self._hass, topic, encode(config), retain=True)
+        for topic in retired_topics(uid, self._discovery_prefix()):
+            await mqtt.async_publish(self._hass, topic, "", retain=True)
 
     def _discovery_prefix(self) -> str:
         for entry in self._hass.config_entries.async_entries("mqtt"):

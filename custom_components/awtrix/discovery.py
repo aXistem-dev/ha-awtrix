@@ -1,8 +1,8 @@
 """MQTT discovery documents for the extra AWTRIX NG entities.
 
 The firmware publishes its own Home Assistant discovery document (matrix and indicator lights, a few selects,
-buttons and sensors). The documents built here add what that one leaves out: a weather overlay select, a
-moodlight light, volume numbers, clock switches and diagnostic sensors fed from the firmware's retained
+buttons, sensors and volume numbers). The documents built here add what that one leaves out: a weather overlay
+select, a moodlight light, clock switches and diagnostic sensors fed from the firmware's retained
 ``state/device`` and ``state/settings`` topics.
 
 They are single-component documents on the discovery topics, attached to the firmware's device through its
@@ -141,30 +141,6 @@ def build_entities(
         "screen",
         {"name": "Screen", "icon": "mdi:television-ambient-light", "topic": screen_picture_topic(prefix)},
     )
-    for key, label, enabled in (
-        ("buzzerVolume", "Buzzer volume", False),
-        ("dfplayerVolume", "DFPlayer volume", False),
-        ("mp3Volume", "MP3 volume", False),
-    ):
-        add(
-            "number",
-            key,
-            {
-                "name": label,
-                "icon": "mdi:volume-high",
-                "min": 0,
-                "max": 100,
-                "step": 1,
-                "mode": "slider",
-                "unit_of_measurement": "%",
-                "entity_category": "config",
-                "enabled_by_default": enabled,
-                "command_topic": settings_cmd,
-                "command_template": _set_settings(key, "{{ value | int }}"),
-                "value_template": "{{ value_json." + key + " }}",
-                **settings_state,
-            },
-        )
     add(
         "number",
         "saturation",
@@ -338,6 +314,16 @@ def build_entities(
         config = {**config, **common, "unique_id": f"{uid}_ext_{key}"}
         out.append((f"{discovery_prefix}/{component}/{uid}/ext_{key}/config", config))
     return out
+
+
+# Extra entities for the per-output volume settings of AWTRIX NG before 1.2. The firmware's own discovery covers
+# volume now, so their retained documents are cleared and Home Assistant removes them.
+RETIRED = [("number", "buzzerVolume"), ("number", "dfplayerVolume"), ("number", "mp3Volume")]
+
+
+def retired_topics(uid: str, discovery_prefix: str = DEFAULT_DISCOVERY_PREFIX) -> list[str]:
+    """Discovery topics to clear (an empty retained message) for entities this integration does not build."""
+    return [f"{discovery_prefix}/{component}/{uid}/ext_{key}/config" for component, key in RETIRED]
 
 
 def encode(config: dict[str, Any]) -> str:

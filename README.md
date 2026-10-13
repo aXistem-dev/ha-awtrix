@@ -2,7 +2,7 @@
 
 This component uses the MQTT API of [Awtrix 3](https://blueforcer.github.io/awtrix3/#/) and of [AWTRIX NG](https://github.com/Blueforcer/awtrix-ng) in Home Assistant easily by adding several additional actions.
 
-Both firmwares are supported by the same actions: the integration detects which one a device runs and publishes to the matching MQTT topics. Awtrix 3 field names keep working on AWTRIX NG (they are translated), and AWTRIX NG's own option names can be used directly.
+Both firmwares are supported by the same actions (AWTRIX NG from version 1.2, whose sound and volume keys it uses): the integration detects which one a device runs and publishes to the matching MQTT topics. Awtrix 3 field names keep working on AWTRIX NG (they are translated), and AWTRIX NG's own option names can be used directly.
 
 ## Installation
 
@@ -54,8 +54,8 @@ The `awtrix.custom_app` action allows you to create and update custom Awtrix app
 | `awtrix.overlay` | yes | yes | Device-wide weather overlay: `rain`, `snow`, `drizzle`, `storm`, `thunder`, `frost` or `clear` |
 | `awtrix.moodlight` | yes | yes | Moodlight colour/brightness (or off) |
 | `awtrix.indicator` | yes | yes | The three indicator pixels: colour, blink, fade |
-| `awtrix.play_sound` | `sound`, `rtttl` | `sound`, `rtttl`, `mp3`, `melody`, `track`, `station`, `index`, `url` | Play a sound or start the radio; give exactly one field |
-| `awtrix.stop_sound` | - | yes | Stop sounds and/or the radio stream |
+| `awtrix.play_sound` | `sound`, `rtttl` | `sound`, `rtttl`, `mp3`, `melody`, `track`, `station`, `index`, `url`, plus `loop` | Play a sound or start the radio; give exactly one field |
+| `awtrix.stop_sound` | - | yes | Stop sounds and/or the radio stream (`group`: `alert`, `app`, `radio`) |
 | `awtrix.app_order` | yes | yes | Order of the app rotation and which apps are switched off |
 | `awtrix.deep_sleep` | yes | yes | Deep sleep, in seconds |
 | `awtrix.reboot` | yes | yes | Reboot |
@@ -73,7 +73,8 @@ On an NG device the existing actions translate the Awtrix 3 vocabulary, for exam
 
 - `color` -> `textColor`, `background` -> `backgroundColor`, `progressC`/`progressBC` -> `progressColor`/`progressTrackColor`
 - `duration`/`lifetime` (seconds) -> `durationMs`/`lifetimeMs`
-- `bar`/`line` -> `barChart`/`lineChart`, `pushIcon` -> `iconMode`, `rtttl` -> `soundRtttl`
+- `bar`/`line` -> `barChart`/`lineChart`, `pushIcon` -> `iconMode`, `center` -> `textAlign`
+- `sound` / `rtttl` / `loopSound` -> one `sound` object (`{"file": …}`, `{"rtttl": …}`, `{"track": …}`, `loop`); a base64 `icon` -> a `data:image/jpeg;base64,` URL; `VOL` -> `volume`
 - `draw` commands (`{"dp": [...]}`) -> NG draw arrays (`["pixel", ...]`)
 - settings such as `BRI`, `ATIME`, `TEFF`, `TSPEED`, `CEL`, `WD`, `OVERLAY`, `MATP` -> `brightness`, `appDurationMs`, `transitionEffect`, ...
 
@@ -88,7 +89,6 @@ For every AWTRIX NG device the integration publishes a set of extra entities as 
 | Weather overlay | select | `none` plus the overlays the firmware reports on `state/capabilities`. The firmware reports no overlay state, so the entity shows what was last sent. |
 | Moodlight | light | Colour and brightness; off sends an empty payload. State is what was last sent. |
 | Saturation, App duration | number | Config |
-| Buzzer / DFPlayer / MP3 volume | number | Config, disabled by default (enable the ones your board has) |
 | 24-hour clock, Show seconds, Celsius, Uppercase text, Block buttons | switch | Config |
 | Clock separator, Transition direction | select | Config |
 | Notification | notify | `notify.send_message` shows the text on the clock for 5 s (`cmd/notify`, `durationMs` 5000, not retained) |

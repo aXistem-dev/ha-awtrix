@@ -208,9 +208,15 @@ def play_sound(flavor: str, prefix: str, data: dict[str, Any]) -> list[Message]:
         raise ValueError(f"Exactly one of {', '.join(NG_AUDIO_KEYS)} is required")
     key, value = next(iter(given.items()))
     if flavor == FLAVOR_NG:
-        if key in ("track", "index"):
-            value = int(value)
-        return [Message(f"{prefix}/cmd/audio/play", _json({key: value}))]
+        if key in ("sound", "mp3", "melody"):
+            sound: dict[str, Any] = {"file": str(value)}  # MP3s and melodies share one name space
+        elif key in ("track", "index"):
+            sound = {key: int(value)}
+        else:
+            sound = {key: str(value)}
+        if data.get("loop"):
+            sound["loop"] = True
+        return [Message(f"{prefix}/cmd/audio/play", _json(sound))]
     if key == "sound":
         return [Message(f"{prefix}/sound", _json({"sound": str(value)}))]
     if key == "rtttl":
@@ -218,10 +224,14 @@ def play_sound(flavor: str, prefix: str, data: dict[str, Any]) -> list[Message]:
     raise UnsupportedError(f"'{key}' is only supported by AWTRIX NG devices; use 'sound' or 'rtttl'")
 
 
+# Older field values of awtrix.stop_sound, as the group they stop.
+_STOP_SCOPES = {"sounds": "alert", "stream": "radio", "all": None}
+
+
 def stop_sound(flavor: str, prefix: str, data: dict[str, Any]) -> list[Message]:
     _ng_only(flavor, "stop_sound")
-    scope = data.get("scope")
-    return [Message(f"{prefix}/cmd/audio/stop", _json({"scope": scope}) if scope else "")]
+    group = data.get("group") or _STOP_SCOPES.get(data.get("scope"))
+    return [Message(f"{prefix}/cmd/audio/stop", _json({"group": group}) if group else "")]
 
 
 def reboot(flavor: str, prefix: str, data: dict[str, Any]) -> list[Message]:

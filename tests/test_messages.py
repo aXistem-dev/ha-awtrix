@@ -119,14 +119,19 @@ class AwtrixNgTests(unittest.TestCase):
             build("indicator", NG, device="d", indicator=4)
 
     def test_audio(self):
-        self.assertEqual(one("play_sound", NG, device="d", mp3="beep"), (f"{P}/cmd/audio/play", {"mp3": "beep"}))
+        self.assertEqual(one("play_sound", NG, device="d", mp3="beep"), (f"{P}/cmd/audio/play", {"file": "beep"}))
+        self.assertEqual(one("play_sound", NG, device="d", sound="ding", loop=True), (f"{P}/cmd/audio/play", {"file": "ding", "loop": True}))
+        self.assertEqual(one("play_sound", NG, device="d", rtttl="x:d=4:c"), (f"{P}/cmd/audio/play", {"rtttl": "x:d=4:c"}))
         self.assertEqual(one("play_sound", NG, device="d", track="12"), (f"{P}/cmd/audio/play", {"track": 12}))
         with self.assertRaises(ValueError):
             build("play_sound", NG, device="d", mp3="a", track=1)
         with self.assertRaises(ValueError):
             build("play_sound", NG, device="d")
         self.assertEqual(one("stop_sound", NG, device="d"), (f"{P}/cmd/audio/stop", ""))
-        self.assertEqual(one("stop_sound", NG, device="d", scope="stream"), (f"{P}/cmd/audio/stop", {"scope": "stream"}))
+        self.assertEqual(one("stop_sound", NG, device="d", group="app"), (f"{P}/cmd/audio/stop", {"group": "app"}))
+        self.assertEqual(one("stop_sound", NG, device="d", scope="stream"), (f"{P}/cmd/audio/stop", {"group": "radio"}))
+        self.assertEqual(one("stop_sound", NG, device="d", scope="sounds"), (f"{P}/cmd/audio/stop", {"group": "alert"}))
+        self.assertEqual(one("stop_sound", NG, device="d", scope="all"), (f"{P}/cmd/audio/stop", ""))
 
     def test_app_order(self):
         self.assertEqual(one("app_order", NG, device="d", disabled=["Battery"]), (f"{P}/cmd/apps/order", {"disabled": ["Battery"]}))
@@ -155,7 +160,9 @@ class AwtrixNgTests(unittest.TestCase):
     def test_notification_translated(self):
         topic, body = one("notification", NG, device="d", text="Door", color="#FF0000", duration=10, rtttl="a:d=4:c", hold=True)
         self.assertEqual(topic, f"{P}/cmd/notify")
-        self.assertEqual(body, {"text": "Door", "textColor": "#FF0000", "durationMs": 10000, "soundRtttl": "a:d=4:c", "hold": True})
+        self.assertEqual(body, {"text": "Door", "textColor": "#FF0000", "durationMs": 10000, "hold": True, "sound": {"rtttl": "a:d=4:c"}})
+        _, body = one("notification", NG, device="d", text="Bell", sound=3)
+        self.assertEqual(body["sound"], {"track": 3})
 
     def test_settings_translated_and_split(self):
         msgs = build("settings", NG, device="d", BRI=80, ATIME=5, MATP=False, OVERLAY="snow", brightness=10)

@@ -54,8 +54,16 @@ class StructureTests(unittest.TestCase):
                 self.assertIn(cfg["state_topic"], (f"{P}/state/settings", f"{P}/state/device"), topic)
 
     def test_hardware_dependent_and_noisy_entities_start_disabled(self):
-        for key in ("buzzerVolume", "dfplayerVolume", "mp3Volume", "fps", "messageCount", "psramFree"):
+        for key in ("fps", "messageCount", "psramFree"):
             self.assertIs(self.by_key[key][1]["enabled_by_default"], False, key)
+
+    def test_retired_volume_entities_are_cleared_not_built(self):
+        topics = discovery.retired_topics(UID)
+        self.assertEqual(len(topics), 3)
+        built = {t for t, _ in self.entities}
+        for topic in topics:
+            self.assertTrue(topic.startswith(f"homeassistant/number/{UID}/ext_"), topic)
+            self.assertNotIn(topic, built)
 
     def test_overlay_options_come_from_capabilities(self):
         default = dict(self.by_key["overlay"][1])["options"]
@@ -91,7 +99,7 @@ class TemplateTests(unittest.TestCase):
         self.assertEqual(render(cfg["command_off_template"]), "")
 
     def test_numbers(self):
-        settings = {"buzzerVolume": 70, "dfplayerVolume": 5, "mp3Volume": 10, "saturation": 90, "appDurationMs": 7000}
+        settings = {"saturation": 90, "appDurationMs": 7000}
         for key, value in settings.items():
             cfg = self.by_key[key]
             self.assertEqual(json.loads(render(cfg["command_template"], value=float(value))), {key: value})
