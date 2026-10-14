@@ -54,9 +54,10 @@ The `awtrix.custom_app` action allows you to create and update custom Awtrix app
 | `awtrix.overlay` | yes | yes | Device-wide weather overlay: `rain`, `snow`, `drizzle`, `storm`, `thunder`, `frost` or `clear` |
 | `awtrix.moodlight` | yes | yes | Moodlight colour/brightness (or off) |
 | `awtrix.indicator` | yes | yes | The three indicator pixels: colour, blink, fade |
-| `awtrix.play_sound` | `sound`, `rtttl` | `sound`, `rtttl`, `mp3`, `melody`, `track`, `station`, `index`, `url`, plus `loop` | Play a sound or start the radio; give exactly one field |
+| `awtrix.play_sound` | `sound`, `rtttl` | `sound`, `rtttl`, `mp3`, `melody`, `track`, `station`, plus `loop` | Play a sound or start the radio; give exactly one field |
 | `awtrix.stop_sound` | - | yes | Stop sounds and/or the radio stream (`group`: `alert`, `app`, `radio`) |
-| `awtrix.app_order` | yes | yes | Order of the app rotation and which apps are switched off |
+| `awtrix.app_order` | yes | yes | Order of the app rotation and which apps are switched off. `disabled` is the complete list; on AWTRIX NG, leave it out to keep the apps that are off now (read from the clock's `/apploop.json` at the web address on its device page) |
+| `awtrix.app_enabled` | - | yes | Switch one app on or off; every other app keeps its state |
 | `awtrix.deep_sleep` | yes | yes | Deep sleep, in seconds |
 | `awtrix.reboot` | yes | yes | Reboot |
 | `awtrix.update_firmware` | yes | - | Start the OTA update |
@@ -93,7 +94,8 @@ For every AWTRIX NG device the integration publishes a set of extra entities as 
 | Clock separator, Transition direction | select | Config |
 | Notification | notify | `notify.send_message` shows the text on the clock for 5 s (`cmd/notify`, `durationMs` 5000, not retained) |
 | Refresh screen picture, Screen | button, camera | The button asks the clock for its current screen (`cmd/screen/get`); the integration turns the reply into a PNG and publishes it on `<prefix>-ext/screen` (beside the clock's topics, not under them) for the camera. Nothing refreshes it on its own, so the clock is only asked when someone presses the button |
-| Lowest free heap, Largest free heap block, Last reset reason, MQTT connects, MQTT last error | sensor | Diagnostic |
+| Lowest free heap, Largest free heap block, Last reset reason, MQTT connects, MQTT last error, MAC address | sensor | Diagnostic |
+| Mirroring | sensor | Diagnostic: `off` or the mirroring state, with `sharing`, `viewers` and `source` as attributes |
 | Frame rate, Commands received, Free PSRAM | sensor | Diagnostic, disabled by default |
 
 The integration finds each device through the device registry (manufacturer `Blueforcer`, model `AWTRIX NG`) and its `MQTT prefix` entity. It publishes at startup, again shortly after a new NG device appears, and again when the firmware's capabilities change. The discovery prefix is read from the MQTT integration (default `homeassistant`).
@@ -106,7 +108,7 @@ Notes on use:
 
 ## Command errors
 
-AWTRIX NG answers every command it recognises on `<command topic>/result`. When a reply says the command was refused, the integration logs a warning and fires the event `awtrix_command_failed` with `prefix`, `command`, `code`, `message` and `field`, so an automation can notify on it. Dismissing a notification that is not there (`notFound` on `notify/dismiss`) is not reported:
+AWTRIX NG answers every command it recognises on `<command topic>/result`, and publishes every refused MQTT command and HTTP request on `<prefix>/event/error`. When a command is refused, or an HTTP request (the web UI, the Hub, a script) is, the integration logs a warning and fires the event `awtrix_command_failed` with `prefix`, `command`, `code`, `message` and `field` (`source: http` for HTTP requests), so an automation can notify on it. Dismissing a notification that is not there (`notFound` on `notify/dismiss`) is not reported:
 
 ```yaml
 trigger:

@@ -22,7 +22,15 @@ from .discovery import (
     retired_topics,
     screen_picture_topic,
 )
-from .results import EVENT_COMMAND_FAILED, describe, is_benign, parse_failure, result_topics
+from .results import (
+    EVENT_COMMAND_FAILED,
+    EVENT_ERROR_TOPIC,
+    describe,
+    is_benign,
+    parse_event_error,
+    parse_failure,
+    result_topics,
+)
 from .screen import parse_screen, to_png
 
 if TYPE_CHECKING:
@@ -103,6 +111,14 @@ class NgManager:
             self._hass.bus.async_fire(EVENT_COMMAND_FAILED, {"prefix": prefix, **failure})
 
         @callback
+        def on_event_error(message) -> None:
+            failure = parse_event_error(prefix, message.topic, message.payload)
+            if failure is None:
+                return
+            _LOGGER.warning("AWTRIX NG %s: %s", prefix, describe(failure))
+            self._hass.bus.async_fire(EVENT_COMMAND_FAILED, {"prefix": prefix, **failure})
+
+        @callback
         def on_screen(message) -> None:
             screen = parse_screen(message.payload)
             if screen is not None:
@@ -114,6 +130,7 @@ class NgManager:
         unsubs.append(await mqtt.async_subscribe(self._hass, f"{prefix}/{SCREEN_TOPIC}", on_screen))
         for topic in result_topics(prefix):
             unsubs.append(await mqtt.async_subscribe(self._hass, topic, on_result))
+        unsubs.append(await mqtt.async_subscribe(self._hass, f"{prefix}/{EVENT_ERROR_TOPIC}", on_event_error))
 
     async def _async_publish_discovery(self, uid: str, prefix: str, name: str | None) -> None:
         for topic, config in build_entities(prefix, uid, self._overlays.get(uid), self._discovery_prefix(), name):

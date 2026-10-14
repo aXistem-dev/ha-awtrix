@@ -1688,19 +1688,6 @@ play_sound:
       description: "Stored radio station to start. AWTRIX NG only."
       selector:
         text: {}
-    index:
-      name: Radio station index
-      description: "Position in the radio station list (0-31). AWTRIX NG only."
-      selector:
-        number:
-          min: 0
-          max: 31
-          mode: box
-    url:
-      name: Stream URL
-      description: "http(s) radio stream that is not stored. AWTRIX NG only."
-      selector:
-        text: {}
     loop:
       name: Loop
       description: "Repeat the sound until it is stopped. AWTRIX NG only."
@@ -1795,10 +1782,39 @@ app_order:
         object: {}
     disabled:
       name: Disabled apps
-      description: "App names to switch off."
+      description: "The complete list of apps to switch off; every app not in it runs. On AWTRIX NG, leave it out to keep the apps that are off now (read from the clock)."
       example: '["Battery"]'
       selector:
         object: {}
+
+app_enabled:
+  name: App On/Off
+  description: "Switch one app on or off; every other app keeps its state. AWTRIX NG only."
+  fields:
+    device:
+      name: Awtrix device
+      required: true
+      description: The Awtrix device to control.
+      selector:
+        device:
+          filter:
+            - integration: mqtt
+              manufacturer: Blueforcer
+              model: AWTRIX NG
+    app:
+      name: App
+      required: true
+      description: "App name as the clock knows it, e.g. Time, weather, Battery."
+      example: "Battery"
+      selector:
+        text: {}
+    enabled:
+      name: Enabled
+      required: true
+      description: "On (in the rotation) or off."
+      default: true
+      selector:
+        boolean: {}
 
 reset_settings:
   name: Reset Settings

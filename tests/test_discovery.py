@@ -85,6 +85,15 @@ class TemplateTests(unittest.TestCase):
     def setUp(self):
         self.by_key = {t.split("/")[-2][4:]: c for t, c in discovery.build_entities(P, UID)}
 
+    def test_mac_and_mirroring_sensors(self):
+        device = {"macAddress": "AA:BB:CC:DD:EE:FF", "mirror": {"sharing": False, "viewers": 0, "source": "", "state": "off"}}
+        self.assertEqual(render(self.by_key["macAddress"]["value_template"], value_json=device), "AA:BB:CC:DD:EE:FF")
+        cfg = self.by_key["mirror"]
+        self.assertEqual(render(cfg["value_template"], value_json=device), "off")
+        self.assertEqual(json.loads(render(cfg["json_attributes_template"], value_json=device)), device["mirror"])
+        self.assertEqual(json.loads(render(cfg["json_attributes_template"], value_json={})), {})
+        self.assertEqual(render(cfg["value_template"], value_json={}), "None")
+
     def test_overlay_command(self):
         tpl = self.by_key["overlay"]["command_template"]
         self.assertEqual(json.loads(render(tpl, value="rain")), {"overlay": "rain"})

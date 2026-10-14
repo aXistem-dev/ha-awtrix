@@ -5,16 +5,19 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+import aiohttp
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components import mqtt
 from homeassistant.const import Platform
 from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.start import async_at_started
 
-from .const import DOMAIN
+from .const import DOMAIN, FLAVOR_NG
 from .devices import find_prefix
 from .manager import NgManager
-from .messages import HANDLERS, UnsupportedError, build
+from .messages import HANDLERS, UnsupportedError, build, disabled_from_apploop
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -34,6 +37,9 @@ async def async_setup(hass: HomeAssistant, _: dict):
         async def handler(call: ServiceCall) -> None:
             flavor, prefix = _resolve_device(hass, call.data.get("device"))
             data = dict(call.data)
+            if action == "app_order" and flavor == FLAVOR_NG and data.get("disabled") is None:
+                # The firmware replaces its whole disabled list, so keep the one the clock has now.
+                data["disabled"] = await _stored_disabled(hass, call.data["device"])
             try:
                 messages = build(action, flavor, prefix, data)
             except UnsupportedError as err:
@@ -80,6 +86,26 @@ def _resolve_device(hass: HomeAssistant, device_id: str | None) -> tuple[str, st
     if found is None:
         raise ServiceValidationError("Could not find the MQTT topic of this Awtrix device; is the device connected to MQTT?")
     return found
+
+
+async def _stored_disabled(hass: HomeAssistant, device_id: str) -> list[str]:
+    """Read the disabled apps from the clock's ``/apploop.json`` (its web address is on the device page)."""
+    device = dr.async_get(hass).async_get(device_id)
+    url = (device.configuration_url if device is not None else None) or ""
+    if not url.startswith(("http://", "https://")):
+        raise ServiceValidationError(
+            "The clock's web address is unknown, so its current app list cannot be read; give `disabled` with the complete list"
+        )
+    try:
+        async with async_get_clientsession(hass).get(
+            f"{url.rstrip('/')}/apploop.json", timeout=aiohttp.ClientTimeout(total=5)
+        ) as response:
+            response.raise_for_status()
+            return disabled_from_apploop(await response.json(content_type=None))
+    except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+        raise ServiceValidationError(
+            f"Could not read the clock's current app list ({err}); give `disabled` with the complete list"
+        ) from err
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

@@ -18,7 +18,7 @@ from .const import FLAVOR_NG, FLAVOR_V3
 from .translate import normalise_overlay, translate_app_payload, translate_settings
 
 NG_APP_NAME = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
-NG_AUDIO_KEYS = ("sound", "mp3", "melody", "track", "rtttl", "station", "index", "url")
+NG_AUDIO_KEYS = ("sound", "mp3", "melody", "track", "rtttl", "station")
 
 # Fields that are always strings on the wire, even when Home Assistant hands us a number.
 _TO_STRING = ("text", "icon", "color", "background", "progressC", "progressBC", "barBC", "lineC", "effect", "overlay", "sound", "rtttl")
@@ -210,7 +210,7 @@ def play_sound(flavor: str, prefix: str, data: dict[str, Any]) -> list[Message]:
     if flavor == FLAVOR_NG:
         if key in ("sound", "mp3", "melody"):
             sound: dict[str, Any] = {"file": str(value)}  # MP3s and melodies share one name space
-        elif key in ("track", "index"):
+        elif key == "track":
             sound = {key: int(value)}
         else:
             sound = {key: str(value)}
@@ -243,10 +243,30 @@ def update_firmware(flavor: str, prefix: str, data: dict[str, Any]) -> list[Mess
     return [Message(f"{prefix}/doupdate", "")]
 
 
+def disabled_from_apploop(stored: Any) -> list[str]:
+    """The disabled list from the clock's ``/apploop.json`` (``{"order": [...], "disabled": [...]}``)."""
+    disabled = stored.get("disabled") if isinstance(stored, dict) else None
+    if not isinstance(disabled, list) or not all(isinstance(name, str) for name in disabled):
+        raise ValueError("apploop.json has no list of disabled apps")
+    return disabled
+
+
+def app_enabled(flavor: str, prefix: str, data: dict[str, Any]) -> list[Message]:
+    _ng_only(flavor, "app_enabled")
+    app = str(data["app"])
+    if not NG_APP_NAME.match(app):
+        raise ValueError(f"Invalid app name: {app!r}")
+    return [Message(f"{prefix}/cmd/apps/{app}/enabled", "true" if data.get("enabled", True) else "false")]
+
+
 def app_order(flavor: str, prefix: str, data: dict[str, Any]) -> list[Message]:
     order = list(data.get("order") or [])
     disabled = list(data.get("disabled") or [])
     if flavor == FLAVOR_NG:
+        # The firmware replaces its whole disabled list with this one, so it must be the complete list
+        # (the action fills in the clock's current list when the caller leaves it out).
+        if data.get("disabled") is None:
+            raise ValueError("the complete list of disabled apps is required")
         body: dict[str, Any] = {"disabled": disabled}
         if order:
             body["order"] = order
@@ -285,6 +305,7 @@ HANDLERS: dict[str, Callable[[str, str, dict[str, Any]], list[Message]]] = {
     "reboot": reboot,
     "update_firmware": update_firmware,
     "app_order": app_order,
+    "app_enabled": app_enabled,
     "reset_settings": reset_settings,
     "get_screen": get_screen,
 }

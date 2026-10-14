@@ -42,6 +42,33 @@ def parse_failure(prefix: str, topic: str, payload: str | bytes) -> dict[str, An
     }
 
 
+EVENT_ERROR_TOPIC = "event/error"
+
+
+def parse_event_error(prefix: str, topic: str, payload: str | bytes) -> dict[str, Any] | None:
+    """A refused HTTP request from ``<prefix>/event/error`` (the web UI, the Hub, scripts calling the API).
+
+    Refused MQTT commands appear there too, but they are already read from their ``/result`` reply, so only
+    ``"source": "http"`` entries are returned.
+    """
+    if topic != f"{prefix}/{EVENT_ERROR_TOPIC}":
+        return None
+    try:
+        data = json.loads(payload)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("source") != "http":
+        return None
+    error = data.get("error") if isinstance(data.get("error"), dict) else {}
+    return {
+        "command": str(data.get("request", "")),
+        "source": "http",
+        "code": error.get("code", "unknown"),
+        "message": error.get("message", ""),
+        "field": error.get("field"),
+    }
+
+
 def is_benign(failure: dict[str, Any]) -> bool:
     """Refusals that carry no news: dismissing a notification that is not there."""
     return failure.get("code") == "notFound" and str(failure.get("command", "")).startswith("notify/dismiss")
@@ -51,4 +78,5 @@ def describe(failure: dict[str, Any]) -> str:
     """One human line for a log entry."""
     field = f" (field {failure['field']})" if failure.get("field") else ""
     message = f": {failure['message']}" if failure.get("message") else ""
-    return f"command '{failure['command']}' refused with {failure['code']}{message}{field}"
+    kind = "HTTP request" if failure.get("source") == "http" else "command"
+    return f"{kind} '{failure['command']}' refused with {failure['code']}{message}{field}"

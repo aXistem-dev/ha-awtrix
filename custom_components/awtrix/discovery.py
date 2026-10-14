@@ -254,6 +254,23 @@ def build_entities(
     )
     add(
         "sensor",
+        "macAddress",
+        {"name": "MAC address", "icon": "mdi:network-outline", "value_template": "{{ value_json.macAddress | default(none) }}", **diag},
+    )
+    add(
+        "sensor",
+        "mirror",
+        {
+            "name": "Mirroring",
+            "icon": "mdi:monitor-share",
+            "value_template": "{{ value_json.mirror.state | default(none) if value_json.mirror is defined else none }}",
+            "json_attributes_topic": device_state["state_topic"],
+            "json_attributes_template": "{{ (value_json.mirror if value_json.mirror is defined else {}) | tojson }}",
+            **diag,
+        },
+    )
+    add(
+        "sensor",
         "mqttConnects",
         {
             "name": "MQTT connects",

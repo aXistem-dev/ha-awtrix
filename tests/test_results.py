@@ -46,3 +46,19 @@ class ParseFailureTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EventErrorTests(unittest.TestCase):
+    def test_http_refusal_is_reported(self):
+        payload = '{"source":"http","request":"/api/v1/apps/script/x","error":{"code":"insufficientStorage","message":"not enough memory"}}'
+        out = results.parse_event_error(P, f"{P}/event/error", payload)
+        self.assertEqual(out["command"], "/api/v1/apps/script/x")
+        self.assertEqual(out["source"], "http")
+        self.assertEqual(out["code"], "insufficientStorage")
+        self.assertEqual(results.describe(out), "HTTP request '/api/v1/apps/script/x' refused with insufficientStorage: not enough memory")
+
+    def test_mqtt_refusals_and_noise_are_left_to_the_result_replies(self):
+        mqtt = '{"source":"mqtt","request":"clock/cmd/audio/play","error":{"code":"validationFailed"}}'
+        self.assertIsNone(results.parse_event_error(P, f"{P}/event/error", mqtt))
+        self.assertIsNone(results.parse_event_error(P, f"{P}/event/error", "not json"))
+        self.assertIsNone(results.parse_event_error(P, f"other/event/error", '{"source":"http"}'))

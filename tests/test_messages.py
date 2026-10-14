@@ -133,6 +133,29 @@ class AwtrixNgTests(unittest.TestCase):
         self.assertEqual(one("stop_sound", NG, device="d", scope="sounds"), (f"{P}/cmd/audio/stop", {"group": "alert"}))
         self.assertEqual(one("stop_sound", NG, device="d", scope="all"), (f"{P}/cmd/audio/stop", ""))
 
+    def test_app_enabled(self):
+        self.assertEqual(one("app_enabled", NG, device="d", app="Battery", enabled=False), (f"{P}/cmd/apps/Battery/enabled", False))
+        self.assertEqual(one("app_enabled", NG, device="d", app="Update-Checker", enabled=True), (f"{P}/cmd/apps/Update-Checker/enabled", True))
+        with self.assertRaises(ValueError):
+            build("app_enabled", NG, device="d", app="a/b", enabled=True)
+        with self.assertRaises(messages.UnsupportedError):
+            build("app_enabled", V3, device="d", app="Battery", enabled=True)
+
+    def test_app_order_needs_the_complete_disabled_list(self):
+        with self.assertRaises(ValueError):
+            build("app_order", NG, device="d", order=["Time"])
+        self.assertEqual(messages.disabled_from_apploop({"order": ["Time"], "disabled": ["Date"]}), ["Date"])
+        for bad in ({}, {"disabled": "Date"}, [], None, {"disabled": [1]}):
+            with self.assertRaises(ValueError):
+                messages.disabled_from_apploop(bad)
+
+    def test_radio_index_and_url_are_not_sound_fields(self):
+        with self.assertRaises(ValueError):
+            build("play_sound", NG, device="d", url="http://x/stream")
+        with self.assertRaises(ValueError):
+            build("play_sound", NG, device="d", index=2)
+        self.assertEqual(one("play_sound", NG, device="d", station="Radio 1"), (f"{P}/cmd/audio/play", {"station": "Radio 1"}))
+
     def test_app_order(self):
         self.assertEqual(one("app_order", NG, device="d", disabled=["Battery"]), (f"{P}/cmd/apps/order", {"disabled": ["Battery"]}))
         self.assertEqual(
